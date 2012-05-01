@@ -1,46 +1,56 @@
-
-
 /*
-- PUT requests to http://proxy_adress/sessions/sessionId to initiate a new virtual connection(session)
-	{
-	secret:"authentificationKey";
-	remoteAdress:"adress";
-	remotePort:"port";
-	callBackUrl:"notification_callback_url" //url that will be called by the proxy on new messages (by POST-ing to that URL)
-	}
-- POST requests on http://proxy_adress/message/sessionId/ to send messages from client to proxy
-- GET  requests on http://proxy_adress/message/sessionId/ to request a message 
-- GET  requests on http://proxy_adress/messages/sessionId to request all available messages
+ SimpleChatService is a node.js server that offers support for implementig scalable chats
+ in  a SOA environment.    Messages persistence in REDIS or in a standard database.
+
+ See README.txt for details. (c) Axiologic SaaS. Licensed: LGPL.
+
+ PUT request to http://chatserver/{room uid}/message/
+ GET requests on http://chatserver/{room uid}/<page_number>/<pageAmount>
+ GET  requests on http://chatserver/{room uid}/count
 */
 
-var http = require('http');
-var router = require('choreographer').router();
+var journey = require('journey');
 
-  
-router.get('/message/*', function(req, res, session) {
-	  res.writeHead(200, {'Content-Type': 'text/plain'});
-	  res.end("message "+session+"\n");
-})
-.get('/messages/*', function(req, res, session) {
-		
-})
-.post('/message/*', function(req, res, session) {
-  
-})
-.put('/sessions/*', function(req, res, session) {
-  
-})
-.delete('/sessions/*', function(req, res, session) {
-  
-})
-.notFound(function(req, res) {
-  res.writeHead(404, {'Content-Type': 'text/plain'});
-  res.end('404: This server is a working.\n' +
-    'I\'m afraid ' + req.url + ' cannot be found here.\n');
+function putMessage(req, res, data) {
+    console.log(data);
+    res.send(200);
+}
+
+function getPage(req, res, roomId, pageNumber, pageLines) {
+    res.send(200, {}, {room:roomId, page:pageNumber,lines:pageLines});
+    //res.send('getPage: ' + req.params[0] + " PageNumber: " + req.params[1] + " PageCount: " + req.params[2]);
+}
+
+function count(req, res, roomId) {
+    res.send(200, {}, {room:roomId});
+    //res.send('count:' + req.params[0]);
+}
+
+//
+// Create a Router
+//
+var router = new(journey.Router);
+
+// Create the routing table
+router.map(function () {
+    this.root.bind(function (req, res) { res.send("Welcome") });
+    this.get(/^\/(.+)\/([0-9]+)\/([0-9]+)/).bind(getPage);
+    this.put(/^\/(.+)\/message/).bind(putMessage);
+    this.get(/^\/(.+)\/count/).bind(count);
+
 });
 
-http.createServer(function(req, res) {
-	  //do middleware stuff before routing
-	  router.apply(this, arguments);
-	  //do more stuff
-	}).listen(80);
+require('http').createServer(function (request, response) {
+    var body = "";
+
+    request.addListener('data', function (chunk) { body += chunk });
+    request.addListener('end', function () {
+        //
+        // Dispatch the request to the router
+        //
+        router.handle(request, body, function (result) {
+            response.writeHead(result.status, result.headers);
+            response.end(result.body);
+        });
+    });
+}).listen(8080);
