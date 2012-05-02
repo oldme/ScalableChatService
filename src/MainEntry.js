@@ -6,7 +6,7 @@
 
  PUT request to http://chatserver/{room uid}/message/
  GET requests on http://chatserver/{room uid}/<page_number>/<pageAmount>
- GET  requests on http://chatserver/{room uid}/count
+ GET requests on http://chatserver/{room uid}/count
 */
 
 var journey = require('journey');
@@ -20,36 +20,47 @@ client.on("error", function (err) {
 
 function putMessage(req, res,roomId, data) {
     console.log(data);
-    res.send(200);
+    client.lpush(roomId,JSON.stringify(data),function()
+    {
+        count(null,res,roomId);
+    });
 }
 
 function addMessage(req, res, roomId, userName, message) {
     var msg= {room:roomId, user:userName,date:null,message:message};
     console.log(JSON.stringify(msg));
-
-    client.lpush(roomId,JSON.stringify(msg),redis.print);
-    res.send(200, {},msg);
+    client.lpush(roomId,JSON.stringify(msg),function()
+    {
+        count(null,res,roomId);
+    });
 }
 
 
 function getPage(req, res, roomId, pageNumber, pageLines) {
-
-    //client.lrange(roomId,pageNumber*pageLines,(pageNumber+1)*pageLines,redis.print);
-
     client.lrange(roomId,pageNumber*pageLines,(pageNumber+1)*pageLines,function (err, replies){
-            console.log(replies.length + " replies:");
+            var ret=null;
             replies.forEach(function (reply, i) {
-                console.log("    " + i + ": " + reply);
+                if(ret == null){
+                    ret="[";
+                }
+                else{
+                    ret+=",";
+                }
+                ret+=reply;
             });
+            ret+="]";
+            res.sendBody(ret);
         }
     );
-    res.send(200, {}, {room:roomId, page:pageNumber,lines:pageLines});
-    //res.send('getPage: ' + req.params[0] + " PageNumber: " + req.params[1] + " PageCount: " + req.params[2]);
 }
 
 function count(req, res, roomId) {
-    res.send(200, {}, {room:roomId});
-    //res.send('count:' + req.params[0]);
+    client.llen(roomId,function(err, reply)
+    {
+        console.log(err);
+        console.log(reply);
+        res.send(200, {}, reply);
+    });
 }
 
 //
@@ -61,7 +72,7 @@ var router = new(journey.Router);
 router.map(function () {
     this.root.bind(function (req, res) { res.send("Welcome") });
     this.get(/^\/(.+)\/([0-9]+)\/([0-9]+)/).bind(getPage);
-    this.get(/^add\/(.+)\/(.+)\/(.*)/).bind(addMessage);
+    this.get(/^add\/(.+)\/(.+)\/(.*)/).bind(addMessage); //tests/|debug only
     this.put(/^\/(.+)\/message/).bind(putMessage);
     this.get(/^\/(.+)\/count/).bind(count);
 
