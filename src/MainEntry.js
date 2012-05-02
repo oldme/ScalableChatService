@@ -1,6 +1,6 @@
 /*
  SimpleChatService is a node.js server that offers support for implementig scalable chats
- in  a SOA environment.    Messages persistence in REDIS or in a standard database.
+ in  a SOA environment. For messages persistence REDIS is used.
 
  See README.txt for details. (c) Axiologic SaaS. Licensed: LGPL.
 
@@ -20,17 +20,15 @@ client.on("error", function (err) {
 
 function putMessage(req, res,roomId, data) {
     console.log(data);
-    client.lpush(roomId,JSON.stringify(data),function()
-    {
+    client.lpush(roomId,JSON.stringify(data),function(){
         count(null,res,roomId);
     });
 }
 
-function addMessage(req, res, roomId, userName, message) {
-    var msg= {room:roomId, user:userName,date:null,message:message};
+function addMessage(req, res, roomId, userName, message, msgDate){
+    var msg= {room:roomId, user:userName,date:msgDate,message:message};
     console.log(JSON.stringify(msg));
-    client.lpush(roomId,JSON.stringify(msg),function()
-    {
+    client.lpush(roomId,JSON.stringify(msg),function(){
         count(null,res,roomId);
     });
 }
@@ -55,8 +53,7 @@ function getPage(req, res, roomId, pageNumber, pageLines) {
 }
 
 function count(req, res, roomId) {
-    client.llen(roomId,function(err, reply)
-    {
+    client.llen(roomId,function(err, reply){
         console.log(err);
         console.log(reply);
         res.send(200, {}, reply);
@@ -72,15 +69,13 @@ var router = new(journey.Router);
 router.map(function () {
     this.root.bind(function (req, res) { res.send("Welcome") });
     this.get(/^\/(.+)\/([0-9]+)\/([0-9]+)/).bind(getPage);
-    this.get(/^add\/(.+)\/(.+)\/(.*)/).bind(addMessage); //tests/|debug only
+    this.get(/^add\/(.+)\/(.+)\/(.*)\/(.*)/).bind(addMessage); //tests/|debug only
     this.put(/^\/(.+)\/message/).bind(putMessage);
     this.get(/^\/(.+)\/count/).bind(count);
-
 });
 
 require('http').createServer(function (request, response) {
     var body = "";
-
     request.addListener('data', function (chunk) { body += chunk });
     request.addListener('end', function () {
         //

@@ -1,4 +1,4 @@
-   		SimpleChatService is a node.js server that offers support for implementig scalable chats in a SOA environment. Messages persistence is performed by Redis.
+SimpleChatService is a very simple node.js server that offers support for implementig scalable chats in a SOA environment. Messages persistence is performed by Redis.
 
 The communication over HTTP will take place by calling:
 - PUT request to "http://chatserver/{room uid}/message/" for adding a new chat message in a room
